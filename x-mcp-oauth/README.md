@@ -84,7 +84,28 @@ X は更新のたびに新しい Refresh Token を返し、古いものを無効
 返ってきた新しい値を保存し直さない実装だと、初回は成功して2回目の更新で必ず落ちる。
 「しばらく動いていたのに数時間後に死ぬ」という症状はこれ。
 
-## 使い方
+## まず手元の実物を読む
+
+クラウド側のセッションからは、あなたのマシンの MCP 設定は見えない。
+先に手元でこれを走らせて、実物のレポートを取る。
+
+```bash
+python3 local_env_report.py
+```
+
+読み取り専用で、何も書き換えない。やることは4つ。
+
+- Claude Desktop / Claude Code の設定ファイルを OS ごとの既定パスから探す
+  （macOS は `~/Library/Application Support/Claude/claude_desktop_config.json`、
+  Windows は `%APPDATA%\Claude\claude_desktop_config.json`、加えて `~/.claude.json` と `.mcp.json`）
+- 見つかった MCP サーバーのうち、X / Twitter 関連のものを抜き出す
+- その env から OAuth 1.0a 構成か 2.0 構成かを判定し、静的な穴を指摘する
+- カレント配下の .env 系にある X 関連キーを、キー名だけ列挙する
+
+秘密の値は伏字にする。redirect_uri と scope だけは原因判定に全文が要るのでそのまま出すが、
+どちらも秘密情報ではない。出力はそのまま貼ってよい。
+
+## 使い方（実走）
 
 ```bash
 cd x-mcp-oauth

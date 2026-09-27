@@ -14,6 +14,32 @@ OAuth 1.0a で今動いているなら、そのまま使い続けてよい。X �
 
 そのうえで、2.0 の接続は裏で直す。以下がその手順。
 
+## 1.0a で繋ぐ（自分のアカウント1つならこちら）
+
+ブラウザでの承認も Callback も PKCE も要らない。Developer Portal で発行した4つの値を .env に入れ、
+署名付きリクエストを1本送るだけで結果が出る。
+
+```powershell
+cd x-mcp-oauth
+powershell -ExecutionPolicy Bypass -File .\run_oauth1.ps1
+```
+
+Windows 以外なら `python3 x_oauth1_check.py`。叩くのは `GET /2/users/me` の1回だけで、投稿はしない。
+出力は `oauth1_result.txt` にも残る。秘密の値は伏字なので、そのまま貼ってよい。
+
+発行の順番だけは守る。App permissions を Read and write にしてから Access Token を発行する。
+逆だと読み取り専用のトークンが残る。権限を変えたら Access Token を再発行する。
+
+| 症状 | 疑うもの |
+|---|---|
+| HTTP 0（届かない） | ネット接続、プロキシ、ファイアウォール |
+| 401 | 4つの値の取り違え、再発行前の古い値、手元の時計のずれ |
+| 403 | App が Project に紐づいていない、プラン・権限の不足 |
+| 402 | クレジット・利用枠の不足（署名は通っている） |
+| 200 だが投稿できない | 権限が Read のまま。上の順番で Access Token を再発行 |
+
+署名の実装は、X 公式ドキュメント「Creating a signature」の例と同じ値が出ることをテストで確認済み。
+
 ## なぜ 2.0 だけ繋がらないのか
 
 X の OAuth 2.0 は Client ID を入れて終わりではなく、Authorization Code Flow + PKCE である。

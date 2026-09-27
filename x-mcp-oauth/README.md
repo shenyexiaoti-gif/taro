@@ -116,6 +116,18 @@ python3 x_oauth2_pkce_check.py                  # 実走
 
 標準ライブラリだけで動く。追加インストールは不要。
 
+### Windows なら一発で
+
+```powershell
+cd x-mcp-oauth
+powershell -ExecutionPolicy Bypass -File .\run_oauth2.ps1
+```
+
+Python の検出、.env の用意、静的チェック、実走（ブラウザは自動で開く）、リフレッシュ検証までを順に進める。
+.env が無ければ作ってメモ帳で開き、そこで止まる。値を埋めて保存し、もう一度実行する。
+出力は `oauth2_result.txt` にも残る。トークンは伏字なので、そのまま貼ってよい。
+redirect_uri が localhost 以外なら `-Manual` を付ける。
+
 `--check-config` は、目で見ても分からないズレを潰す。末尾スラッシュ、前後の空白、全角文字の混入、
 scope のカンマ区切り、offline.access の欠落。ここで NG が出るなら実走する意味がない。
 

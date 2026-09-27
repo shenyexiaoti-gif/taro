@@ -10,6 +10,8 @@
 | settings.local.json.example | フック登録 | 中身を claude-code\.claude\settings.local.json へ |
 | CLAUDE_md_追記.md | ネタ出しの主軸ズレ／会話切れで消える | 中身を claude-code\CLAUDE.md の末尾へ |
 | user必須化_貼り付け文.md | --user 省略で別垢に入る | 手元の Claude Code に貼る |
+| 通常投稿の下書き化_調査まとめ.md | X通常ポストは下書き自動化ができない理由と選択肢 | 読み物（打ち合わせ資料） |
+| post_to_file_貼り付け文.md | 通常ポストを今日から自動執筆＋手貼りで回す案 | 手元の Claude Code に貼る |
 
 ## 1. 診断スクリプト setup_check.ps1
 
@@ -63,8 +65,15 @@ CLAUDE_md_追記.md の枠の中身を CLAUDE.md の末尾に貼る。次の会�
 
 user必須化_貼り付け文.md の枠の中身を、手元の Claude Code に貼る。差分を見せてくるので、確認して OK を出す。
 
+## 5. X通常ポストの下書き化について
+
+X記事とは別物。公式APIに通常ポストの下書き機能が無く、Xアプリの「下書き」自体も端末ローカル保存で
+アカウントに同期されない。詳しくは 通常投稿の下書き化_調査まとめ.md を見る。
+今日から動く代替案が post_to_file_貼り付け文.md（執筆は自動、投稿だけ手で貼る）。
+
 ## このセットでは直らないもの
 
 - 402（X API の残高切れ）… developer.x.com でチャージする
 - Copilot に話しかけていた … 星マークのパネル（Claude Code）に切り替える
 - ZIP が古い … 最新版はほしのから受け取る。setup_check.ps1 が「最新版 ZIP 待ち」と出す項目がそれ
+- X通常ポストの下書き自動投入 … 公式APIに機能が無いため不可能（詳細は上記の調査まとめ）

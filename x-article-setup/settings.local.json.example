@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python skills/x_article_workflow/check_hook.py",
+            "timeout": 150
+          }
+        ]
+      }
+    ]
+  }
+}

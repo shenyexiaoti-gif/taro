@@ -14,6 +14,90 @@ OAuth 1.0a で今動いているなら、そのまま使い続けてよい。X �
 
 そのうえで、2.0 の接続は裏で直す。以下がその手順。
 
+## 書き上げた記事を X の下書きに送る（MCP 不要）
+
+記事はどの Claude（ウェブ版・クラウド版を含む）で書いてもいい。
+x-article-mobile スキル（チャットに「スマホ」）で整形した本文を、そのまま送れる。
+
+```powershell
+cd C:\Users\ozasa\taro\x-mcp-oauth
+py -3 send_draft.py --clipboard --dry-run   # ブラウザでコピーした本文を、送らずに変換だけ見る
+py -3 send_draft.py --clipboard             # 下書きに送る
+py -3 send_draft.py 記事.txt                # ファイルから送る（UTF-8）
+```
+
+- タイトルは本文の1行目を使う。「# 」や「タイトル：」は外す。別に付けるなら `--title "題名"`
+- 1行が1ブロックになる。X の記事エディタで Enter を押したのと同じ区切り方
+- 「# 」は見出し、「## 」は小見出し、「- 」「・」は箇条書き、「1. 」は番号付き、「> 」は引用になる
+- X が見出しや箇条書きの種別を受け付けなかったときは、全部ふつうの段落で自動的に送り直す
+- スキル出力の末尾にある「手入力が必要な箇所」「公開前チェック」は本文ではないので送らない
+- コードと表の丸カッコのマーカーは残る。下書きを開いて手で入れる
+- 公開はしない。下書きに入れるだけ
+
+## MCP から X を操作する（npm 不要）
+
+1.0a の鍵が通ったら、その鍵で X を操作する MCP サーバーをこのフォルダの Python で建てられる。
+npm パッケージを落とさないので、外部実行ファイルを消すタイプのセキュリティ製品に引っかからない。
+
+```powershell
+cd x-mcp-oauth
+powershell -ExecutionPolicy Bypass -File .\run_oauth1.ps1   # 先に 1.0a を通しておく
+powershell -ExecutionPolicy Bypass -File .\setup_mcp.ps1    # Claude の設定に登録する
+```
+
+`setup_mcp.ps1` は、疎通を確認したうえで設定ファイルをバックアップし、`mcpServers` に `x-oauth1` を追記する。
+登録先は既定で Claude Code（`%USERPROFILE%\.claude.json`）と Claude Desktop の両方。片方だけなら `-Target Code` か `-Target Desktop`。
+書き込まず内容だけ見るなら `-Print`。実行前に Claude のアプリを完全に終了しておく。
+秘密の値は設定ファイルに書かない。サーバーが同じフォルダの `.env` を絶対パスで読む。
+
+使えるのは、このPCで動くローカルのセッションだけ。クラウドのセッションからは、このPCの MCP は見えない。
+
+MCP を通さずに記事の下書き API だけを試すなら、これを打つ。登録の問題か API の問題かを切り分けられる。
+
+```powershell
+py -3 x_mcp_server.py --test-draft
+```
+
+登録後に Claude を再起動すると、次の3つが使える。
+
+| ツール | 種別 | 内容 |
+|---|---|---|
+| x_get_me | 読み取り | 自分のアカウント情報を返す |
+| x_search_recent | 読み取り | 直近7日のポストを検索する |
+| x_post_tweet | 書き込み | ポストを1件投稿する。実行前に承認を挟む |
+| x_create_article_draft | 書き込み | X 記事（Articles）の下書きを作る。公開はしない |
+| x_delete_tweet | 書き込み | 指定 id のポストを削除する。テスト投稿の後始末に使う |
+
+投稿は不可逆なので、`x_post_tweet` は必ず内容を確認してから実行する。
+`x_create_article_draft` は `POST /2/articles/draft` を叩く。本文は平文で渡し、空行で段落を分ける。公開は X の画面で行う。
+本文の各段落は `text` と `type` だけで送る。`depth` など定義外の項目を1つでも足すと、X は 400 で弾く（2026-09-28 に実機で確認し、この形で下書き作成が通った）。Claude 側の許可プロンプトがその関所になる。
+
+## 1.0a で繋ぐ（自分のアカウント1つならこちら）
+
+ブラウザでの承認も Callback も PKCE も要らない。Developer Portal で発行した4つの値を .env に入れ、
+署名付きリクエストを1本送るだけで結果が出る。
+
+```powershell
+cd x-mcp-oauth
+powershell -ExecutionPolicy Bypass -File .\run_oauth1.ps1
+```
+
+Windows 以外なら `python3 x_oauth1_check.py`。叩くのは `GET /2/users/me` の1回だけで、投稿はしない。
+出力は `oauth1_result.txt` にも残る。秘密の値は伏字なので、そのまま貼ってよい。
+
+発行の順番だけは守る。App permissions を Read and write にしてから Access Token を発行する。
+逆だと読み取り専用のトークンが残る。権限を変えたら Access Token を再発行する。
+
+| 症状 | 疑うもの |
+|---|---|
+| HTTP 0（届かない） | ネット接続、プロキシ、ファイアウォール |
+| 401 | 4つの値の取り違え、再発行前の古い値、手元の時計のずれ |
+| 403 | App が Project に紐づいていない、プラン・権限の不足 |
+| 402 | クレジット・利用枠の不足（署名は通っている） |
+| 200 だが投稿できない | 権限が Read のまま。上の順番で Access Token を再発行 |
+
+署名の実装は、X 公式ドキュメント「Creating a signature」の例と同じ値が出ることをテストで確認済み。
+
 ## なぜ 2.0 だけ繋がらないのか
 
 X の OAuth 2.0 は Client ID を入れて終わりではなく、Authorization Code Flow + PKCE である。
@@ -116,6 +200,18 @@ python3 x_oauth2_pkce_check.py                  # 実走
 
 標準ライブラリだけで動く。追加インストールは不要。
 
+### Windows なら一発で
+
+```powershell
+cd x-mcp-oauth
+powershell -ExecutionPolicy Bypass -File .\run_oauth2.ps1
+```
+
+Python の検出、.env の用意、静的チェック、実走（ブラウザは自動で開く）、リフレッシュ検証までを順に進める。
+.env が無ければ作ってメモ帳で開き、そこで止まる。値を埋めて保存し、もう一度実行する。
+出力は `oauth2_result.txt` にも残る。トークンは伏字なので、そのまま貼ってよい。
+redirect_uri が localhost 以外なら `-Manual` を付ける。
+
 `--check-config` は、目で見ても分からないズレを潰す。末尾スラッシュ、前後の空白、全角文字の混入、
 scope のカンマ区切り、offline.access の欠落。ここで NG が出るなら実走する意味がない。
 
@@ -152,3 +248,12 @@ OAuth 2.0 + PKCE + Refresh Token
 
 ここまで通ったら、MCP 側の実装を同じ手順に合わせる。
 このツールで通って MCP で通らないなら、原因は X 側ではなく MCP サーバーの実装にある、と切り分けが済んだことになる。
+
+## クラウド運用時の注意
+
+`x_oauth2_pkce_check.py` の認可フローの実走と `local_env_report.py` の実走は、どちらも手元のマシンでのみ行う。
+前者は X の承認画面とローカルの callback を要し、後者は手元マシンの MCP 設定ファイルを読む道具であり、
+クラウド側のセッションからはどちらも実行できない、または実行する意味がない。
+
+.env や実トークンは、クラウドセッションにも、環境の Secrets にも入れない。
+クラウド側で回すのは構文チェックとこのリポジトリのテストだけであり、テストは実通信なしで完結する。

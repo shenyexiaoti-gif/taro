@@ -28,7 +28,7 @@ class JsonRpcTest(unittest.TestCase):
     def test_tools_list_has_three_tools(self) -> None:
         r = srv.handle({"jsonrpc": "2.0", "id": 2, "method": "tools/list"}, CFG)
         names = {t["name"] for t in r["result"]["tools"]}
-        self.assertEqual(names, {"x_get_me", "x_search_recent", "x_post_tweet"})
+        self.assertEqual(names, {"x_get_me", "x_search_recent", "x_post_tweet", "x_delete_tweet"})
 
     def test_unknown_method_errors(self) -> None:
         r = srv.handle({"jsonrpc": "2.0", "id": 3, "method": "nope"}, CFG)
@@ -96,6 +96,15 @@ class ToolTest(unittest.TestCase):
 
     def test_search_requires_query(self) -> None:
         self.assertIn("空", srv.tool_search_recent(CFG, {"query": " "}))
+
+    def test_delete_rejects_empty_id(self) -> None:
+        self.assertIn("空", srv.tool_delete_tweet(CFG, {"id": " "}))
+
+    def test_delete_success(self) -> None:
+        with mock.patch.object(srv, "_request", return_value=(200, '{"data":{"deleted":true}}')) as m:
+            out = srv.tool_delete_tweet(CFG, {"id": "999"})
+        self.assertIn("deleted=True", out)
+        self.assertEqual(m.call_args[0][1], "DELETE")
 
     def test_search_success(self) -> None:
         with mock.patch.object(srv, "_request_with_query", return_value=(200, '{"data":[]}')):

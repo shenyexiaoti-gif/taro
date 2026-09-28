@@ -70,6 +70,18 @@ TOOLS = [
             "additionalProperties": False,
         },
     },
+    {
+        "name": "x_delete_tweet",
+        "description": "指定した id のポストを削除する。書き込み操作。テスト投稿の後始末に使う。",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "id": {"type": "string", "description": "削除するポストの id"},
+            },
+            "required": ["id"],
+            "additionalProperties": False,
+        },
+    },
 ]
 
 
@@ -155,10 +167,23 @@ def tool_post_tweet(cfg: Config, args: dict) -> str:
     return f"投稿した。id={data.get('id', '')} text={data.get('text', '')}"
 
 
+def tool_delete_tweet(cfg: Config, args: dict) -> str:
+    tweet_id = (args.get("id") or "").strip()
+    if not tweet_id:
+        return "id が空。削除しない。"
+    url = f"{TWEETS_URL}/{urllib.parse.quote(tweet_id)}"
+    status, resp = _request(cfg, "DELETE", url, None, None, None)
+    if status != 200:
+        return _fail(status, resp)
+    deleted = json.loads(resp).get("data", {}).get("deleted")
+    return f"削除した（deleted={deleted}）。id={tweet_id}"
+
+
 DISPATCH = {
     "x_get_me": tool_get_me,
     "x_search_recent": tool_search_recent,
     "x_post_tweet": tool_post_tweet,
+    "x_delete_tweet": tool_delete_tweet,
 }
 
 

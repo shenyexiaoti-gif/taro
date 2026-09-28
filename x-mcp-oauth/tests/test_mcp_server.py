@@ -136,6 +136,22 @@ class ToolTest(unittest.TestCase):
         self.assertIn("400", out)
         self.assertIn("bad content_state", out)
 
+    def test_test_draft_uses_fixed_title(self) -> None:
+        cfg = mock.MagicMock()
+        cfg.missing.return_value = []
+        with mock.patch.object(srv, "tool_create_article_draft", return_value="下書きを作成した。id=a1") as m:
+            with mock.patch("builtins.print"):
+                rc = srv.test_draft(cfg)
+        self.assertEqual(rc, 0)
+        self.assertEqual(m.call_args[0][1]["title"], srv.TEST_DRAFT_TITLE)
+
+    def test_test_draft_fails_on_error(self) -> None:
+        cfg = mock.MagicMock()
+        cfg.missing.return_value = []
+        with mock.patch.object(srv, "tool_create_article_draft", return_value="HTTP 400: x"):
+            with mock.patch("builtins.print"):
+                self.assertEqual(srv.test_draft(cfg), 1)
+
     def test_delete_rejects_empty_id(self) -> None:
         self.assertIn("空", srv.tool_delete_tweet(CFG, {"id": " "}))
 

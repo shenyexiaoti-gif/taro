@@ -26,8 +26,17 @@ powershell -ExecutionPolicy Bypass -File .\setup_mcp.ps1    # Claude の設定�
 ```
 
 `setup_mcp.ps1` は、疎通を確認したうえで設定ファイルをバックアップし、`mcpServers` に `x-oauth1` を追記する。
-秘密の値は設定ファイルに書かない。サーバーが同じフォルダの `.env` から読む。
-登録先を変えるなら `-ConfigPath "パス"`、書き込まず内容だけ見るなら `-Print`。
+登録先は既定で Claude Code（`%USERPROFILE%\.claude.json`）と Claude Desktop の両方。片方だけなら `-Target Code` か `-Target Desktop`。
+書き込まず内容だけ見るなら `-Print`。実行前に Claude のアプリを完全に終了しておく。
+秘密の値は設定ファイルに書かない。サーバーが同じフォルダの `.env` を絶対パスで読む。
+
+使えるのは、このPCで動くローカルのセッションだけ。クラウドのセッションからは、このPCの MCP は見えない。
+
+MCP を通さずに記事の下書き API だけを試すなら、これを打つ。登録の問題か API の問題かを切り分けられる。
+
+```powershell
+py -3 x_mcp_server.py --test-draft
+```
 
 登録後に Claude を再起動すると、次の3つが使える。
 

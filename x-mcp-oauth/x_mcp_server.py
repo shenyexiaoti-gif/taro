@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 import urllib.error
 import urllib.parse
@@ -323,16 +324,41 @@ def selftest(cfg: Config) -> int:
     return 0
 
 
+TEST_DRAFT_TITLE = "【テスト】MCP下書き接続確認"
+TEST_DRAFT_TEXT = (
+    "MCPから下書きを作る接続テストである。\n\n"
+    "この下書きが見えていれば、鍵とMCPの両方が生きている。\n\n"
+    "確認が済んだら削除する。"
+)
+
+
+def test_draft(cfg: Config) -> int:
+    """MCP を通さず、記事の下書き作成 API だけを1回叩く。"""
+    missing = cfg.missing()
+    if missing:
+        print(f"[NG] .env に値が足りない: {', '.join(missing)}")
+        return 1
+    print(f"[..] 下書きを作成: {TEST_DRAFT_TITLE}")
+    out = tool_create_article_draft(cfg, {"title": TEST_DRAFT_TITLE, "text": TEST_DRAFT_TEXT})
+    print(out)
+    return 0 if out.startswith("下書きを作成した") else 1
+
+
 def main() -> int:
+    # Claude は別のフォルダから起動するので、.env は既定でこのファイルの隣を読む
+    default_env = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env")
     parser = argparse.ArgumentParser(description="X OAuth 1.0a MCP サーバー")
     parser.add_argument("--selftest", action="store_true", help="stdio を使わず x_get_me を1回叩く")
-    parser.add_argument("--env", default=".env", help=".env のパス")
+    parser.add_argument("--test-draft", action="store_true", help="stdio を使わず記事の下書きを1件作る")
+    parser.add_argument("--env", default=default_env, help=".env のパス（既定はこのファイルの隣）")
     args = parser.parse_args()
 
     load_dotenv(args.env)
     cfg = Config()
     if args.selftest:
         return selftest(cfg)
+    if args.test_draft:
+        return test_draft(cfg)
     return serve(cfg)
 
 

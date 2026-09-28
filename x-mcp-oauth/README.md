@@ -14,6 +14,31 @@ OAuth 1.0a で今動いているなら、そのまま使い続けてよい。X �
 
 そのうえで、2.0 の接続は裏で直す。以下がその手順。
 
+## MCP から X を操作する（npm 不要）
+
+1.0a の鍵が通ったら、その鍵で X を操作する MCP サーバーをこのフォルダの Python で建てられる。
+npm パッケージを落とさないので、外部実行ファイルを消すタイプのセキュリティ製品に引っかからない。
+
+```powershell
+cd x-mcp-oauth
+powershell -ExecutionPolicy Bypass -File .\run_oauth1.ps1   # 先に 1.0a を通しておく
+powershell -ExecutionPolicy Bypass -File .\setup_mcp.ps1    # Claude の設定に登録する
+```
+
+`setup_mcp.ps1` は、疎通を確認したうえで設定ファイルをバックアップし、`mcpServers` に `x-oauth1` を追記する。
+秘密の値は設定ファイルに書かない。サーバーが同じフォルダの `.env` から読む。
+登録先を変えるなら `-ConfigPath "パス"`、書き込まず内容だけ見るなら `-Print`。
+
+登録後に Claude を再起動すると、次の3つが使える。
+
+| ツール | 種別 | 内容 |
+|---|---|---|
+| x_get_me | 読み取り | 自分のアカウント情報を返す |
+| x_search_recent | 読み取り | 直近7日のポストを検索する |
+| x_post_tweet | 書き込み | ポストを1件投稿する。実行前に承認を挟む |
+
+投稿は不可逆なので、`x_post_tweet` は必ず内容を確認してから実行する。Claude 側の許可プロンプトがその関所になる。
+
 ## 1.0a で繋ぐ（自分のアカウント1つならこちら）
 
 ブラウザでの承認も Callback も PKCE も要らない。Developer Portal で発行した4つの値を .env に入れ、

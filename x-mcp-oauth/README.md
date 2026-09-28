@@ -49,7 +49,8 @@ py -3 x_mcp_server.py --test-draft
 | x_delete_tweet | 書き込み | 指定 id のポストを削除する。テスト投稿の後始末に使う |
 
 投稿は不可逆なので、`x_post_tweet` は必ず内容を確認してから実行する。
-`x_create_article_draft` は `POST /2/articles/draft` を叩く。本文は平文で渡し、空行で段落を分ける。公開は X の画面で行う。Claude 側の許可プロンプトがその関所になる。
+`x_create_article_draft` は `POST /2/articles/draft` を叩く。本文は平文で渡し、空行で段落を分ける。公開は X の画面で行う。
+本文の各段落は `text` と `type` だけで送る。`depth` など定義外の項目を1つでも足すと、X は 400 で弾く（2026-09-28 に実機で確認し、この形で下書き作成が通った）。Claude 側の許可プロンプトがその関所になる。
 
 ## 1.0a で繋ぐ（自分のアカウント1つならこちら）
 

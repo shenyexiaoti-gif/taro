@@ -36,9 +36,11 @@ powershell -ExecutionPolicy Bypass -File .\setup_mcp.ps1    # Claude の設定�
 | x_get_me | 読み取り | 自分のアカウント情報を返す |
 | x_search_recent | 読み取り | 直近7日のポストを検索する |
 | x_post_tweet | 書き込み | ポストを1件投稿する。実行前に承認を挟む |
+| x_create_article_draft | 書き込み | X 記事（Articles）の下書きを作る。公開はしない |
 | x_delete_tweet | 書き込み | 指定 id のポストを削除する。テスト投稿の後始末に使う |
 
-投稿は不可逆なので、`x_post_tweet` は必ず内容を確認してから実行する。Claude 側の許可プロンプトがその関所になる。
+投稿は不可逆なので、`x_post_tweet` は必ず内容を確認してから実行する。
+`x_create_article_draft` は `POST /2/articles/draft` を叩く。本文は平文で渡し、空行で段落を分ける。公開は X の画面で行う。Claude 側の許可プロンプトがその関所になる。
 
 ## 1.0a で繋ぐ（自分のアカウント1つならこちら）
 

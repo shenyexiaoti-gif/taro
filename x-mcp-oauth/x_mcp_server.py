@@ -30,6 +30,7 @@ API_BASE = "https://api.x.com/2"
 ME_URL = f"{API_BASE}/users/me"
 TWEETS_URL = f"{API_BASE}/tweets"
 SEARCH_URL = f"{API_BASE}/tweets/search/recent"
+ARTICLES_DRAFT_URL = f"{API_BASE}/articles/draft"
 
 PROTOCOL_VERSION = "2024-11-05"
 SERVER_INFO = {"name": "x-oauth1-mcp", "version": "0.1.0"}
@@ -67,6 +68,22 @@ TOOLS = [
                 "text": {"type": "string", "description": "投稿する本文"},
             },
             "required": ["text"],
+            "additionalProperties": False,
+        },
+    },
+    {
+        "name": "x_create_article_draft",
+        "description": (
+            "X の長文記事（Articles）の下書きを作る。公開はしない。書き込み操作。"
+            "本文は平文で渡す。空行で段落を区切る。実行前に内容を人へ提示して承認を得ること。"
+        ),
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "title": {"type": "string", "description": "記事タイトル"},
+                "text": {"type": "string", "description": "本文（平文。空行で段落区切り）"},
+            },
+            "required": ["title", "text"],
             "additionalProperties": False,
         },
     },
@@ -167,6 +184,52 @@ def tool_post_tweet(cfg: Config, args: dict) -> str:
     return f"投稿した。id={data.get('id', '')} text={data.get('text', '')}"
 
 
+def build_content_state(text: str) -> dict:
+    """平文から Articles の content_state を組む。空行で段落を分ける。
+
+    X の Articles は DraftJS 風の content_state（snake_case）を要求する。
+    最小構成として、段落ごとに type=unstyled のブロックを並べる。
+    細部の形は API の応答で確定させる方針なので、まずは最小限で送る。
+    """
+    paragraphs = [p.strip() for p in text.replace("\r\n", "\n").split("\n\n")]
+    blocks = []
+    for i, para in enumerate(paragraphs):
+        if not para:
+            continue
+        blocks.append({
+            "key": f"b{i}",
+            "text": para,
+            "type": "unstyled",
+            "depth": 0,
+            "inline_style_ranges": [],
+            "entity_ranges": [],
+            "data": {},
+        })
+    if not blocks:
+        blocks.append({"key": "b0", "text": "", "type": "unstyled", "depth": 0,
+                       "inline_style_ranges": [], "entity_ranges": [], "data": {}})
+    return {"blocks": blocks, "entities": []}
+
+
+def tool_create_article_draft(cfg: Config, args: dict) -> str:
+    title = (args.get("title") or "").strip()
+    text = args.get("text") or ""
+    if not title:
+        return "title が空。下書きを作らない。"
+    if not text.strip():
+        return "text が空。下書きを作らない。"
+    payload = {"title": title, "content_state": build_content_state(text)}
+    body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
+    status, resp = _request(cfg, "POST", ARTICLES_DRAFT_URL, None, body, "application/json")
+    if status not in (200, 201):
+        # 形が違えば X が検証エラーを返す。丸ごと出して形を確定させる。
+        return (_fail(status, resp) +
+                "\n（Articles の content_state の形が違う場合はここに詳細が出る。"
+                "送った本文の骨組み: " + json.dumps(payload["content_state"], ensure_ascii=False)[:300] + "）")
+    data = json.loads(resp).get("data", {})
+    return f"下書きを作成した。id={data.get('id', '')} title={title}"
+
+
 def tool_delete_tweet(cfg: Config, args: dict) -> str:
     tweet_id = (args.get("id") or "").strip()
     if not tweet_id:
@@ -183,6 +246,7 @@ DISPATCH = {
     "x_get_me": tool_get_me,
     "x_search_recent": tool_search_recent,
     "x_post_tweet": tool_post_tweet,
+    "x_create_article_draft": tool_create_article_draft,
     "x_delete_tweet": tool_delete_tweet,
 }
 

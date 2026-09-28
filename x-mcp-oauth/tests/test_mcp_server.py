@@ -28,7 +28,7 @@ class JsonRpcTest(unittest.TestCase):
     def test_tools_list_has_three_tools(self) -> None:
         r = srv.handle({"jsonrpc": "2.0", "id": 2, "method": "tools/list"}, CFG)
         names = {t["name"] for t in r["result"]["tools"]}
-        self.assertEqual(names, {"x_get_me", "x_search_recent", "x_post_tweet", "x_delete_tweet"})
+        self.assertEqual(names, {"x_get_me", "x_search_recent", "x_post_tweet", "x_create_article_draft", "x_delete_tweet"})
 
     def test_unknown_method_errors(self) -> None:
         r = srv.handle({"jsonrpc": "2.0", "id": 3, "method": "nope"}, CFG)
@@ -96,6 +96,45 @@ class ToolTest(unittest.TestCase):
 
     def test_search_requires_query(self) -> None:
         self.assertIn("空", srv.tool_search_recent(CFG, {"query": " "}))
+
+    def test_content_state_splits_paragraphs(self) -> None:
+        cs = srv.build_content_state("一段落目\n\n二段落目\n\n\n三段落目")
+        self.assertEqual([b["text"] for b in cs["blocks"]], ["一段落目", "二段落目", "三段落目"])
+        self.assertTrue(all(b["type"] == "unstyled" for b in cs["blocks"]))
+        self.assertEqual(cs["entities"], [])
+
+    def test_content_state_keeps_single_newlines_inside_paragraph(self) -> None:
+        cs = srv.build_content_state("1行目\n2行目")
+        self.assertEqual(len(cs["blocks"]), 1)
+        self.assertEqual(cs["blocks"][0]["text"], "1行目\n2行目")
+
+    def test_article_draft_requires_title_and_text(self) -> None:
+        self.assertIn("title", srv.tool_create_article_draft(CFG, {"title": " ", "text": "x"}))
+        self.assertIn("text", srv.tool_create_article_draft(CFG, {"title": "t", "text": " "}))
+
+    def test_article_draft_success_posts_json_to_draft_endpoint(self) -> None:
+        captured = {}
+
+        def fake_request(cfg, method, url, oauth_params, body, content_type):
+            captured.update(method=method, url=url, oauth_params=oauth_params,
+                            body=body, content_type=content_type)
+            return 201, '{"data":{"id":"a1"}}'
+
+        with mock.patch.object(srv, "_request", side_effect=fake_request):
+            out = srv.tool_create_article_draft(CFG, {"title": "題", "text": "本文"})
+        self.assertIn("a1", out)
+        self.assertEqual(captured["method"], "POST")
+        self.assertEqual(captured["url"], srv.ARTICLES_DRAFT_URL)
+        self.assertIsNone(captured["oauth_params"])
+        sent = json.loads(captured["body"])
+        self.assertEqual(sent["title"], "題")
+        self.assertEqual(sent["content_state"]["blocks"][0]["text"], "本文")
+
+    def test_article_draft_failure_shows_x_error(self) -> None:
+        with mock.patch.object(srv, "_request", return_value=(400, '{"errors":[{"message":"bad content_state"}]}')):
+            out = srv.tool_create_article_draft(CFG, {"title": "題", "text": "本文"})
+        self.assertIn("400", out)
+        self.assertIn("bad content_state", out)
 
     def test_delete_rejects_empty_id(self) -> None:
         self.assertIn("空", srv.tool_delete_tweet(CFG, {"id": " "}))

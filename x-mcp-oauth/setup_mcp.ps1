@@ -85,8 +85,9 @@ $failed = 0
 foreach ($t in $targets) {
     Head "3. 登録: $($t.Name)"
     Info "対象: $($t.Path)"
+    # --arg=値 の形で渡す。値が -- で始まっても登録ツールのオプションと取り違えないため
     $regArgs = @($register, '--config', $t.Path, '--command', $pyExe,
-                 '--arg', $serverPath, '--arg', '--env', '--arg', $envPath)
+                 "--arg=$serverPath", '--arg=--env', "--arg=$envPath")
     if ($t.Code)  { $regArgs += '--code' }
     if ($Print)   { $regArgs += '--print' }
     & $pyExe @regArgs
@@ -96,6 +97,10 @@ foreach ($t in $targets) {
 # ---------------------------------------------------------------- 4. 次にやること
 Head '4. 次にやること'
 if ($Print) { Info '-Print 指定のため、どこにも書き込んでいない。'; exit 0 }
+if ($failed -gt 0) {
+    Ng '登録に失敗したものがある。上の [NG] の行を貼ってくれれば直す。'
+    exit $failed
+}
 Info 'Claude Code のアプリを開き直し、ローカルのセッション（このPCで動く方）を新しく始める。'
 Info 'クラウドのセッションからは、このPCの MCP は見えない。'
 Info 'ツール一覧に x-oauth1 が出れば成功。まず「x_get_me を呼んで」で疎通を見る。'

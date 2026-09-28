@@ -8,6 +8,7 @@ import os
 import sys
 import tempfile
 import unittest
+from unittest import mock
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
@@ -74,6 +75,21 @@ class RegisterTest(unittest.TestCase):
     def test_desktop_entry_has_no_type(self) -> None:
         entry = reg.build_entry("py", ["s.py"], False)
         self.assertNotIn("type", entry)
+
+
+class MainArgsTest(unittest.TestCase):
+    def test_arg_values_starting_with_dashes_are_accepted(self) -> None:
+        # setup_mcp.ps1 と同じ渡し方。--env をサーバーへの引数として受け取れること
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, ".claude.json")
+            argv = ["mcp_register.py", "--config", path, "--command", "C:/py/python.exe",
+                    "--arg=C:/x/x_mcp_server.py", "--arg=--env", "--arg=C:/x/.env", "--code"]
+            with mock.patch.object(sys, "argv", argv), mock.patch("builtins.print"):
+                rc = reg.main()
+            self.assertEqual(rc, 0)
+            with open(path, encoding="utf-8") as fh:
+                entry = json.load(fh)["mcpServers"]["x-oauth1"]
+            self.assertEqual(entry["args"], ["C:/x/x_mcp_server.py", "--env", "C:/x/.env"])
 
 
 if __name__ == "__main__":

@@ -103,6 +103,20 @@ class ToolTest(unittest.TestCase):
         self.assertTrue(all(b["type"] == "unstyled" for b in cs["blocks"]))
         self.assertEqual(cs["entities"], [])
 
+    def test_content_state_blocks_have_only_text_and_type(self) -> None:
+        # X はスキーマ外の項目（depth 等）を 400 で弾く。実機で確認済み。
+        cs = srv.build_content_state("本文")
+        self.assertEqual(set(cs["blocks"][0]), {"text", "type"})
+
+    def test_x_error_lines_lists_every_message(self) -> None:
+        body = ('{"detail":"One or more parameters to your request was invalid.",'
+                '"errors":[{"message":"a is bad"},{"message":"b is bad"}]}')
+        self.assertEqual(srv.x_error_lines(body),
+                         ["One or more parameters to your request was invalid.", "a is bad", "b is bad"])
+
+    def test_x_error_lines_non_json(self) -> None:
+        self.assertEqual(srv.x_error_lines("oops"), ["oops"])
+
     def test_content_state_keeps_single_newlines_inside_paragraph(self) -> None:
         cs = srv.build_content_state("1行目\n2行目")
         self.assertEqual(len(cs["blocks"]), 1)
@@ -134,7 +148,7 @@ class ToolTest(unittest.TestCase):
         with mock.patch.object(srv, "_request", return_value=(400, '{"errors":[{"message":"bad content_state"}]}')):
             out = srv.tool_create_article_draft(CFG, {"title": "題", "text": "本文"})
         self.assertIn("400", out)
-        self.assertIn("bad content_state", out)
+        self.assertIn("  - bad content_state", out)
 
     def test_test_draft_uses_fixed_title(self) -> None:
         cfg = mock.MagicMock()

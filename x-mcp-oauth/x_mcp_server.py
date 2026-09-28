@@ -188,28 +188,30 @@ def tool_post_tweet(cfg: Config, args: dict) -> str:
 def build_content_state(text: str) -> dict:
     """平文から Articles の content_state を組む。空行で段落を分ける。
 
-    X の Articles は DraftJS 風の content_state（snake_case）を要求する。
-    最小構成として、段落ごとに type=unstyled のブロックを並べる。
-    細部の形は API の応答で確定させる方針なので、まずは最小限で送る。
+    X の Articles は content_state のスキーマが厳格で、定義外の項目（depth など）を送ると
+    400 で弾く。段落ごとに text と type だけを持つ最小構成で送る。
     """
     paragraphs = [p.strip() for p in text.replace("\r\n", "\n").split("\n\n")]
-    blocks = []
-    for i, para in enumerate(paragraphs):
-        if not para:
-            continue
-        blocks.append({
-            "key": f"b{i}",
-            "text": para,
-            "type": "unstyled",
-            "depth": 0,
-            "inline_style_ranges": [],
-            "entity_ranges": [],
-            "data": {},
-        })
+    blocks = [{"text": p, "type": "unstyled"} for p in paragraphs if p]
     if not blocks:
-        blocks.append({"key": "b0", "text": "", "type": "unstyled", "depth": 0,
-                       "inline_style_ranges": [], "entity_ranges": [], "data": {}})
+        blocks = [{"text": "", "type": "unstyled"}]
     return {"blocks": blocks, "entities": []}
+
+
+def x_error_lines(body: str) -> list[str]:
+    """X のエラー応答から message を全件取り出す。JSON でなければ本文をそのまま返す。"""
+    try:
+        payload = json.loads(body)
+    except json.JSONDecodeError:
+        return [body[:2000]]
+    lines = []
+    if isinstance(payload, dict):
+        if payload.get("detail"):
+            lines.append(str(payload["detail"]))
+        for err in payload.get("errors") or []:
+            if isinstance(err, dict):
+                lines.append(str(err.get("message") or err))
+    return lines or [body[:2000]]
 
 
 def tool_create_article_draft(cfg: Config, args: dict) -> str:
@@ -223,10 +225,13 @@ def tool_create_article_draft(cfg: Config, args: dict) -> str:
     body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
     status, resp = _request(cfg, "POST", ARTICLES_DRAFT_URL, None, body, "application/json")
     if status not in (200, 201):
-        # 形が違えば X が検証エラーを返す。丸ごと出して形を確定させる。
-        return (_fail(status, resp) +
-                "\n（Articles の content_state の形が違う場合はここに詳細が出る。"
-                "送った本文の骨組み: " + json.dumps(payload["content_state"], ensure_ascii=False)[:300] + "）")
+        if status in (0, 401, 403, 429):
+            return _fail(status, resp)
+        # 形が違えば X が検証エラーを返す。全件を1行ずつ出して形を確定させる。
+        lines = [f"HTTP {status}: X が下書きの形を受け付けなかった。指摘は次のとおり。"]
+        lines += [f"  - {m}" for m in x_error_lines(resp)]
+        lines.append("送ったブロックの形: " + json.dumps(payload["content_state"]["blocks"][0], ensure_ascii=False))
+        return "\n".join(lines)
     data = json.loads(resp).get("data", {})
     return f"下書きを作成した。id={data.get('id', '')} title={title}"
 

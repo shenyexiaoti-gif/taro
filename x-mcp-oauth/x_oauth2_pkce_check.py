@@ -150,13 +150,17 @@ def check_config(cfg: Config) -> int:
 # ------------------------------------------------------------------ PKCE core
 
 
+def challenge_from_verifier(verifier: str, method: str) -> str:
+    """code_verifier から code_challenge を計算する（RFC 7636）。"""
+    if method == "plain":
+        return verifier
+    digest = hashlib.sha256(verifier.encode("ascii")).digest()
+    return base64.urlsafe_b64encode(digest).decode().rstrip("=")
+
+
 def make_pkce(method: str) -> tuple[str, str]:
     verifier = base64.urlsafe_b64encode(secrets.token_bytes(64)).decode().rstrip("=")
-    if method == "plain":
-        return verifier, verifier
-    digest = hashlib.sha256(verifier.encode("ascii")).digest()
-    challenge = base64.urlsafe_b64encode(digest).decode().rstrip("=")
-    return verifier, challenge
+    return verifier, challenge_from_verifier(verifier, method)
 
 
 def build_authorize_url(cfg: Config, challenge: str, state: str) -> str:

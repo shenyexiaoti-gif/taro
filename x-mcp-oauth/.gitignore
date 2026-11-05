@@ -1,3 +1,5 @@
 .env
 __pycache__/
 *.pyc
+oauth2_result.txt
+oauth1_result.txt

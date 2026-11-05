@@ -128,5 +128,20 @@ class ServerIntegrationTest(unittest.TestCase):
         self.assertNotIn("isError", r["result"])
 
 
+class MainSelftestTest(unittest.TestCase):
+    def test_selftest_reads_keys_file_when_env_is_empty(self) -> None:
+        path = _write(chr(10).join(f"{k}={v}" for k, v in DUMMY.items()))
+        argv = ["x_mcp_server.py", "--selftest", "--env", "/no/such/.env"]
+        try:
+            with mock.patch.dict(os.environ, {kf.KEYS_FILE_ENV: path}, clear=True):
+                with mock.patch.object(sys, "argv", argv):
+                    with mock.patch.object(srv, "tool_get_me", return_value="ok") as me:
+                        code = srv.main()
+        finally:
+            os.remove(path)
+        self.assertEqual(code, 0)
+        me.assert_called_once()
+
+
 if __name__ == "__main__":
     unittest.main()

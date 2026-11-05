@@ -21,7 +21,7 @@ description: クラウドのセッションで X（旧 Twitter）の MCP サー�
 
 1. ブランチが `claude/loving-planck-tfnfr2` であること。違えば `git fetch origin claude/loving-planck-tfnfr2` のあと `git checkout claude/loving-planck-tfnfr2` で切り替える（既定ブランチにはサーバーが無い）
 2. `.mcp.json` と `x-mcp-oauth/x_keys_file.py` があること
-3. ツール一覧に `x_get_me` などの `x-oauth1` のツールが見えること。見えなければ、`.mcp.json` が読まれていない。セッションを開き直す必要があるかを太郎課長に聞く
+3. ツール一覧に `x_get_me` などの `x-oauth1` のツールが見えること。見えなければ、`.mcp.json` が読まれていない。MCP サーバーはセッションの開始時に `.mcp.json` から登録される。既定ブランチ（`.mcp.json` が無い）で始まったセッションは、あとでブランチを切り替えても登録されない。この場合は、2章のあとの「MCP を使わない確認」で通信だけ先に確かめ、ツールとして使うには `claude/loving-planck-tfnfr2` でセッションを開き直す必要があると報告する
 
 ## 2. 鍵を用意する
 
@@ -34,6 +34,16 @@ description: クラウドのセッションで X（旧 Twitter）の MCP サー�
    ```
 
    `足りない鍵: []` と出れば、4つとも読めている（`X_API_KEY`、`X_API_SECRET`、`X_ACCESS_TOKEN`、`X_ACCESS_TOKEN_SECRET`）
+
+### MCP を使わない確認
+
+ツールが出ていなくても、鍵とクラウドの通信経路が通るかは、次のコマンドで確かめられる。`x_get_me` を1回だけ呼ぶ（読み取りだけ）。
+
+```
+cd x-mcp-oauth && python3 x_mcp_server.py --selftest
+```
+
+username `F8Q75WZwaibw` が返れば、鍵と通信は通っている。ただし、MCP のツールとして登録されているかは別の話なので、報告では分けて書く。
 
 Drive のツールが無い、または `x_keys.md` が見つからないときは、ここで止めて報告する。前者は claude.ai の Customize > Connectors で Google Drive を有効にする必要がある。後者は Drive の同期の遅れかもしれない。
 

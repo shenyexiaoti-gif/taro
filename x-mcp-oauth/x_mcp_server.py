@@ -365,6 +365,7 @@ def main() -> int:
     args = parser.parse_args()
 
     load_dotenv(args.env)
+    load_keys_file()  # .env が無いクラウドでは、鍵ファイル（~/.x_keys.md）から読み足す
     cfg = Config()
     if args.selftest:
         return selftest(cfg)

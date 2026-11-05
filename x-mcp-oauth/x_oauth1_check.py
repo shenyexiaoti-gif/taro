@@ -50,6 +50,13 @@ class Config:
     def missing(self) -> list[str]:
         return [k for k in KEYS if not os.environ.get(k, "")]
 
+    def refresh(self) -> None:
+        """環境変数に後から入った値（鍵ファイルの読み込みなど）を取り込み直す。"""
+        self.api_key = os.environ.get("X_API_KEY", "")
+        self.api_secret = os.environ.get("X_API_SECRET", "")
+        self.access_token = os.environ.get("X_ACCESS_TOKEN", "")
+        self.access_token_secret = os.environ.get("X_ACCESS_TOKEN_SECRET", "")
+
 
 def check_config(cfg: Config) -> int:
     print("=== 静的チェック（OAuth 1.0a）===")

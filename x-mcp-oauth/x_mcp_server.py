@@ -25,6 +25,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
+from x_keys_file import load_keys_file, missing_message
 from x_oauth1_check import Config, authorization_header, load_dotenv
 
 API_BASE = "https://api.x.com/2"
@@ -283,6 +284,11 @@ def handle(msg: dict, cfg: Config) -> dict | None:
         fn = DISPATCH.get(name)
         if fn is None:
             return _err(mid, -32602, f"未知のツール: {name}")
+        if isinstance(cfg, Config):
+            still_missing = load_keys_file()
+            if still_missing:
+                return _ok(mid, {"content": [{"type": "text", "text": missing_message(still_missing)}], "isError": True})
+            cfg.refresh()
         try:
             text = fn(cfg, params.get("arguments") or {})
             return _ok(mid, {"content": [{"type": "text", "text": text}]})
